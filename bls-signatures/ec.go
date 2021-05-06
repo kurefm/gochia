@@ -17,3 +17,16 @@ func G1Generator() *bls12381.PointG1 {
 	one, _ := bls12381.NewG1().FromBytes(g1One)
 	return one
 }
+
+func DecodePointG1(s string) (*bls12381.PointG1, error) {
+	bs, err := hex.DecodeString(s)
+	if err != nil {
+		return nil, err
+	}
+
+	return bls12381.NewG1().FromCompressed(bs)
+}
+
+func EncodePointG1(p *bls12381.PointG1) string {
+	return hex.EncodeToString(bls12381.NewG1().ToCompressed(p))
+}

@@ -1,13 +1,13 @@
 package plotting
 
 import (
-	"crypto/sha256"
 	"encoding/hex"
 	"fmt"
 	"testing"
 	"time"
 
 	"github.com/kilic/bls12-381"
+	"github.com/kurefm/gochia/blockchain_format"
 	"github.com/kurefm/gochia/bls-signatures"
 	"github.com/kurefm/gochia/wallet"
 	"github.com/stretchr/testify/require"
@@ -16,16 +16,10 @@ import (
 func TestGenerateMemo(t *testing.T) {
 	size := 32
 
-	g1 := bls12381.NewG1()
-
-	farmerPkBytes, err := hex.DecodeString("a51c11a0d227167e8edd91008de5949d979f9e0849522631d10cb03a9b6833df326e481c8411289f972f2558643283e3")
-	require.NoError(t, err)
-	farmerPk, err := g1.FromCompressed(farmerPkBytes)
+	farmerPk, err := bls_signatures.DecodePointG1("a51c11a0d227167e8edd91008de5949d979f9e0849522631d10cb03a9b6833df326e481c8411289f972f2558643283e3")
 	require.NoError(t, err)
 
-	poolPkBytes, err := hex.DecodeString("95c462e7b2fd7817dcb1c063b0cd3b0deba7692054966acb781efb4fac26b8f49466b6f20cf01e5a937029e55f409272")
-	require.NoError(t, err)
-	poolPk, err := g1.FromCompressed(poolPkBytes)
+	poolPk, err := bls_signatures.DecodePointG1("95c462e7b2fd7817dcb1c063b0cd3b0deba7692054966acb781efb4fac26b8f49466b6f20cf01e5a937029e55f409272")
 	require.NoError(t, err)
 
 	token, err := hex.DecodeString("92ef4cbd1c8a724633932fecd58a5e276da660f81a01f9559c8881145c1644b3")
@@ -33,13 +27,10 @@ func TestGenerateMemo(t *testing.T) {
 
 	sk := bls_signatures.KeyGen(token)
 
-	plotPk := g1.Add(g1.New(), wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
+	plotPk := blockchain_format.GeneratePlotPublicKey(wallet.MaterSkToLocalSk(sk).GetG1(), farmerPk)
+	plotID := blockchain_format.CalculatePlotIdPk(poolPk, plotPk)
 
-	hash := sha256.New()
-	hash.Write(g1.ToCompressed(poolPk))
-	hash.Write(g1.ToCompressed(plotPk))
-	plotID := hash.Sum(nil)
-
+	g1 := bls12381.NewG1()
 	plotMemo := make([]byte, 0, 128)
 	plotMemo = append(plotMemo, g1.ToCompressed(poolPk)...)   // Len 48
 	plotMemo = append(plotMemo, g1.ToCompressed(farmerPk)...) // Len 48
@@ -47,7 +38,7 @@ func TestGenerateMemo(t *testing.T) {
 
 	filename := fmt.Sprintf("plot-k%d-%s-%s.plot",
 		size,
-		time.Now().Format("06-01-02-12-04"),
+		time.Now().Format("06-01-02-15-04"),
 		hex.EncodeToString(plotID),
 	)
 
